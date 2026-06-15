@@ -107,6 +107,16 @@ async def connect_lavalink():
             print(f"Lavalink {cfg['identifier']} gagal: {e}")
     return False
 
+async def _start_lavalink():
+    try:
+        ok = await connect_lavalink()
+        if ok:
+            print("Lavalink siap!", flush=True)
+        else:
+            print("Semua Lavalink node gagal, pake yt-dlp fallback.", flush=True)
+    except Exception as e:
+        print(f"Lavalink error: {e}", flush=True)
+
 def is_lavalink_connected():
     nodes = wavelink.Pool.nodes
     return bool(nodes and any(n.status.name == 'CONNECTED' for n in nodes.values()))
@@ -316,13 +326,8 @@ async def on_ready():
         _sys.stdout.flush()
         await client.change_presence(status=discord.Status.do_not_disturb, activity=discord.Game(name="Mini World: CREATA"))
 
-        # Konek ke Lavalink dengan fallback nodes
-        try:
-            lav = await connect_lavalink()
-            if not lav:
-                print("Semua Lavalink node gagal, pake yt-dlp fallback.")
-        except Exception as e:
-            print(f"Lavalink error: {e}")
+        # Konek ke Lavalink di background (jangan blokir)
+        asyncio.create_task(_start_lavalink())
 
         # Daftarin commands pake tree.command decorator
         guilds = [discord.Object(id=g.id) for g in client.guilds]
