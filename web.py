@@ -1,5 +1,6 @@
-import threading, requests, os, json
-from flask import Flask, render_template, request, jsonify
+import threading, requests, os, json, time
+from flask import Flask, render_template, request, jsonify, session, redirect
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -10,13 +11,78 @@ OWNER_ID = int(os.getenv("OWNER_ID", 0))
 HEADERS = {}
 API = "https://discord.com/api/v10"
 
+WEB_USER = os.getenv("WEB_USER", "admin")
+WEB_PASS = os.getenv("WEB_PASS", "admin123")
+visitor_log = []
+
+def parse_ua(ua):
+    ua = ua or ""
+    ua_lower = ua.lower()
+    if "iphone" in ua_lower or "ipad" in ua_lower:
+        device = "Apple iPhone/iPad"
+    elif "android" in ua_lower:
+        for brand in ["Samsung", "Xiaomi", "Oppo", "Vivo", "Realme", "Huawei", "OnePlus", "Google"]:
+            if brand.lower() in ua_lower:
+                device = brand
+                break
+        else:
+            device = "Android"
+    elif "windows" in ua_lower:
+        device = "Windows PC"
+    elif "macintosh" in ua_lower or "mac os" in ua_lower:
+        device = "Apple Mac"
+    elif "linux" in ua_lower:
+        device = "Linux PC"
+    else:
+        device = "Unknown"
+    return device
+
 def update_headers():
     global HEADERS
     if TOKEN:
         HEADERS = {"Authorization": f"Bot {TOKEN}", "Content-Type": "application/json"}
 update_headers()
 
-def get_bot_name():
+def login_required(f):
+    @wraps(f)
+    def wrapper(*a, **kw):
+        if not session.get("logged_in"):
+            return redirect("/login")
+        return f(*a, **kw)
+    return wrapper
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        u = request.form.get("username", "")
+        p = request.form.get("password", "")
+        if u == WEB_USER and p == WEB_PASS:
+            session["logged_in"] = True
+            ua = request.headers.get("User-Agent", "")
+            ip = request.headers.get("X-Forwarded-For", request.remote_addr or "?")
+            device = parse_ua(ua)
+            visitor_log.append({
+                "ip": ip.split(",")[0].strip(),
+                "device": device,
+                "browser": ua.split("/")[0] if "/" in ua else ua[:60],
+                "time": time.strftime("%Y-%m-%d %H:%M:%S")
+            })
+            return redirect("/")
+        return render_template("login.html", error="Username atau password salah")
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.pop("logged_in", None)
+    return redirect("/login")
+
+@app.route("/api/visitors")
+def api_visitors():
+    return jsonify(list(reversed(visitor_log)))
+
+@app.route("/")
+@login_required
+def index():
     try:
         r = requests.get(f"{API}/users/@me", headers=HEADERS, timeout=5)
         if r.status_code == 200:
