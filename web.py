@@ -18,14 +18,17 @@ visitor_log = []
 
 def geoip(ip):
     try:
-        r = requests.get(f"http://ip-api.com/json/{ip}", params={"fields": "city,regionName,country"}, timeout=5)
+        r = requests.get(f"http://ip-api.com/json/{ip}", params={"fields": "city,regionName,country,isp,org,lat,lon"}, timeout=5)
         if r.status_code == 200:
             d = r.json()
             if d.get("status") == "fail":
                 return "Unknown"
-            return f"{d.get('city','?')}, {d.get('regionName','?')}, {d.get('country','?')}"
+            loc = f"{d.get('city','?')}, {d.get('regionName','?')}, {d.get('country','?')}"
+            isp = d.get("isp") or d.get("org") or ""
+            coords = f"{d.get('lat','?')},{d.get('lon','?')}" if d.get('lat') else ""
+            return {"loc": loc, "isp": isp, "coords": coords}
     except: pass
-    return "Unknown"
+    return {"loc": "Unknown", "isp": "", "coords": ""}
 
 def parse_ua(ua):
     ua = ua or ""
@@ -74,16 +77,27 @@ def login():
             ip = request.headers.get("X-Forwarded-For", request.remote_addr or "?")
             device = parse_ua(ua)
             ip_addr = ip.split(",")[0].strip()
-            loc = geoip(ip_addr)
+            g = geoip(ip_addr)
+            loc = g["loc"]
+            isp = g["isp"]
+            coords = g["coords"]
             info = {
                 "ip": ip_addr,
                 "location": loc,
+                "isp": isp,
+                "coords": coords,
                 "device": device,
                 "browser": ua.split("/")[0] if "/" in ua else ua[:60],
                 "time": time.strftime("%Y-%m-%d %H:%M:%S")
             }
             visitor_log.append(info)
-            print(f"\n[VISITOR] {info['time']} | IP: {info['ip']} | Lokasi: {info['location']} | Device: {info['device']} | Browser: {info['browser']}\n")
+            print(f"\n[VISITOR] {info['time']}")
+            print(f"  IP      : {info['ip']}")
+            print(f"  Lokasi  : {info['location']}")
+            print(f"  ISP     : {info['isp'] or '-'}")
+            print(f"  Coords  : {info['coords'] or '-'}")
+            print(f"  Device  : {info['device']}")
+            print(f"  Browser : {info['browser']}\n")
             return redirect("/")
         return render_template("login.html", error="Username atau password salah")
     return render_template("login.html")
