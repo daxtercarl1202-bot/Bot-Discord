@@ -18,9 +18,11 @@ visitor_log = []
 
 def geoip(ip):
     try:
-        r = requests.get(f"http://ip-api.com/json/{ip}?fields=city,regionName,country", timeout=5)
+        r = requests.get(f"http://ip-api.com/json/{ip}", params={"fields": "city,regionName,country"}, timeout=5)
         if r.status_code == 200:
             d = r.json()
+            if d.get("status") == "fail":
+                return "Unknown"
             return f"{d.get('city','?')}, {d.get('regionName','?')}, {d.get('country','?')}"
     except: pass
     return "Unknown"
