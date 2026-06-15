@@ -21,6 +21,8 @@ except ImportError:
 
 load_dotenv()
 
+print("STARTUP main.py", flush=True)
+
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GUILD_ID = os.getenv("GUILD_ID")
 
@@ -304,10 +306,14 @@ def get_queue(guild_id):
         queues[guild_id] = []
     return queues[guild_id]
 
+print("main.py loaded, registering events...", flush=True)
+
 @client.event
 async def on_ready():
+    import sys as _sys
     try:
-        print(f"Bot {client.user} uda online!")
+        print(f"Bot {client.user} uda online!", flush=True)
+        _sys.stdout.flush()
         await client.change_presence(status=discord.Status.do_not_disturb, activity=discord.Game(name="Mini World: CREATA"))
 
         # Konek ke Lavalink dengan fallback nodes
