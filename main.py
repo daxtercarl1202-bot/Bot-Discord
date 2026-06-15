@@ -375,6 +375,7 @@ async def on_ready():
         traceback.print_exc()
 
     for guild in client.guilds:
+        for ch in guild.text_channels:
             if ch.permissions_for(guild.me).send_messages:
                 await ch.send("bot siap dipkai!")
                 break
