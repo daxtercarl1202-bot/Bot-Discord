@@ -13,6 +13,7 @@ API = "https://discord.com/api/v10"
 
 WEB_USER = os.getenv("WEB_USER", "admin")
 WEB_PASS = os.getenv("WEB_PASS", "admin123")
+WEB_NAME = os.getenv("WEB_NAME", "Bot Panel")
 visitor_log = []
 
 def geoip(ip):
@@ -93,9 +94,10 @@ def logout():
 @app.route("/")
 @login_required
 def index():
-    return render_template("index.html", bot_name=get_bot_name())
+    return render_template("index.html", bot_name=WEB_NAME)
 
 @app.route("/api/guilds")
+@login_required
 def api_guilds():
     if not HEADERS: return jsonify({"error":"Not configured"}),400
     try:
@@ -104,6 +106,7 @@ def api_guilds():
     except Exception as e: return jsonify({"error":str(e)}),500
 
 @app.route("/api/channels/<guild_id>")
+@login_required
 def api_channels(guild_id):
     if not HEADERS: return jsonify({"error":"Not configured"}),400
     try:
@@ -115,6 +118,7 @@ def api_channels(guild_id):
     except Exception as e: return jsonify({"error":str(e)}),500
 
 @app.route("/api/send", methods=["POST"])
+@login_required
 def api_send():
     if not HEADERS: return jsonify({"error":"Not configured"}),400
     data = request.json
@@ -126,6 +130,7 @@ def api_send():
     except Exception as e: return jsonify({"error":str(e)}),500
 
 @app.route("/api/dm/send", methods=["POST"])
+@login_required
 def api_dm_send():
     if not HEADERS: return jsonify({"error":"Not configured"}),400
     data = request.json
@@ -139,6 +144,7 @@ def api_dm_send():
     except Exception as e: return jsonify({"error":str(e)}),500
 
 @app.route("/api/dm/chat/<user_id>")
+@login_required
 def api_dm_chat(user_id):
     if not HEADERS: return jsonify({"error":"Not configured"}),400
     try:
@@ -152,6 +158,7 @@ def api_dm_chat(user_id):
     except Exception as e: return jsonify({"error":str(e)}),500
 
 @app.route("/api/status")
+@login_required
 def api_status():
     if not HEADERS: return jsonify({"ok":False,"message":"Not configured"})
     try:
