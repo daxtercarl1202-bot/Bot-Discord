@@ -306,48 +306,75 @@ def get_queue(guild_id):
 
 @client.event
 async def on_ready():
-    print(f"Bot {client.user} uda online!")
-    await client.change_presence(status=discord.Status.do_not_disturb, activity=discord.Game(name="Mini World: CREATA"))
+    try:
+        print(f"Bot {client.user} uda online!")
+        await client.change_presence(status=discord.Status.do_not_disturb, activity=discord.Game(name="Mini World: CREATA"))
 
-    # Konek ke Lavalink dengan fallback nodes
-    if not await connect_lavalink():
-        print("Semua Lavalink node gagal, pake yt-dlp fallback.")
-
-    # Daftarin commands
-    guilds = [discord.Object(id=g.id) for g in client.guilds]
-    registered = []
-    for cmd_fn, cmd_name, cmd_desc in [
-        (stop_cmd, "stop", "stop music"),
-        (queue_cmd, "queue", "Lihat antrian lagu"),
-        (ping_cmd, "ping", "Cek status bot"),
-        (ownerbot_cmd, "ownerbot", "Info pembuat bot"),
-        (status_cmd, "status", "Cek status koneksi bot"),
-        (bannplayer_cmd, "bannplayer", "Cara banned player Mini World"),
-        (say_cmd, "say", "Kirim pesan lewat bot"),
-        (sayhello_cmd, "sayhello", "Bot bilang Hello"),
-        (reconnect_cmd, "reconnect", "Coba konek ulang Lavalink"),
-        (panel_cmd, "panel", "Private panel (owner only)"),
-    ]:
+        # Konek ke Lavalink dengan fallback nodes
         try:
-            cmd = app_commands.Command(name=cmd_name, description=cmd_desc, callback=cmd_fn)
-            for g in guilds:
-                existing = [c for c in tree.get_commands(guild=g) if c.name == cmd_name]
-                if not existing:
-                    tree.add_command(cmd, guild=g)
-            registered.append(cmd_name)
+            lav = await connect_lavalink()
+            if not lav:
+                print("Semua Lavalink node gagal, pake yt-dlp fallback.")
         except Exception as e:
-            print(f"Gagal daftarin cmd /{cmd_name}: {e}")
+            print(f"Lavalink error: {e}")
 
-    for g in guilds:
-        try:
-            await tree.sync(guild=g)
-        except Exception as e:
-            print(f"Gagal sync guild {g.id}: {e}")
+        # Daftarin commands pake tree.command decorator
+        guilds = [discord.Object(id=g.id) for g in client.guilds]
 
-    print(f"Commands registered: {', '.join(registered)}")
+        @tree.command(name="stop", description="stop music", guilds=guilds)
+        async def cmd_stop(interaction: discord.Interaction):
+            await stop_cmd(interaction)
+
+        @tree.command(name="queue", description="Lihat antrian lagu", guilds=guilds)
+        async def cmd_queue(interaction: discord.Interaction):
+            await queue_cmd(interaction)
+
+        @tree.command(name="ping", description="Cek status bot", guilds=guilds)
+        async def cmd_ping(interaction: discord.Interaction):
+            await ping_cmd(interaction)
+
+        @tree.command(name="ownerbot", description="Info pembuat bot", guilds=guilds)
+        async def cmd_ownerbot(interaction: discord.Interaction):
+            await ownerbot_cmd(interaction)
+
+        @tree.command(name="status", description="Cek status koneksi bot", guilds=guilds)
+        async def cmd_status(interaction: discord.Interaction):
+            await status_cmd(interaction)
+
+        @tree.command(name="bannplayer", description="Cara banned player Mini World", guilds=guilds)
+        async def cmd_bannplayer(interaction: discord.Interaction):
+            await bannplayer_cmd(interaction)
+
+        @tree.command(name="say", description="Kirim pesan lewat bot", guilds=guilds)
+        async def cmd_say(interaction: discord.Interaction, channel: discord.TextChannel, pesan: str):
+            await say_cmd(interaction, channel, pesan)
+
+        @tree.command(name="sayhello", description="Bot bilang Hello", guilds=guilds)
+        async def cmd_sayhello(interaction: discord.Interaction):
+            await sayhello_cmd(interaction)
+
+        @tree.command(name="reconnect", description="Coba konek ulang Lavalink", guilds=guilds)
+        async def cmd_reconnect(interaction: discord.Interaction):
+            await reconnect_cmd(interaction)
+
+        @tree.command(name="panel", description="Private panel (owner only)", guilds=guilds)
+        async def cmd_panel(interaction: discord.Interaction):
+            await panel_cmd(interaction)
+
+        for g in guilds:
+            try:
+                await tree.sync(guild=g)
+            except Exception as e:
+                print(f"Gagal sync guild {g.id}: {e}")
+
+        print("Commands registered!")
+
+    except Exception as e:
+        print(f"ERROR di on_ready: {e}")
+        import traceback
+        traceback.print_exc()
 
     for guild in client.guilds:
-        for ch in guild.text_channels:
             if ch.permissions_for(guild.me).send_messages:
                 await ch.send("bot siap dipkai!")
                 break
