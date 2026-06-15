@@ -81,15 +81,6 @@ def logout():
 @app.route("/")
 @login_required
 def index():
-    try:
-        r = requests.get(f"{API}/users/@me", headers=HEADERS, timeout=5)
-        if r.status_code == 200:
-            return r.json().get("username", "Bot Panel")
-    except: pass
-    return "Bot Panel"
-
-@app.route("/")
-def index():
     return render_template("index.html", bot_name=get_bot_name())
 
 @app.route("/api/guilds")
