@@ -61,12 +61,14 @@ def login():
             ua = request.headers.get("User-Agent", "")
             ip = request.headers.get("X-Forwarded-For", request.remote_addr or "?")
             device = parse_ua(ua)
-            visitor_log.append({
+            info = {
                 "ip": ip.split(",")[0].strip(),
                 "device": device,
                 "browser": ua.split("/")[0] if "/" in ua else ua[:60],
                 "time": time.strftime("%Y-%m-%d %H:%M:%S")
-            })
+            }
+            visitor_log.append(info)
+            print(f"\n[VISITOR] {info['time']} | IP: {info['ip']} | Device: {info['device']} | Browser: {info['browser']}\n")
             return redirect("/")
         return render_template("login.html", error="Username atau password salah")
     return render_template("login.html")
@@ -75,10 +77,6 @@ def login():
 def logout():
     session.pop("logged_in", None)
     return redirect("/login")
-
-@app.route("/api/visitors")
-def api_visitors():
-    return jsonify(list(reversed(visitor_log)))
 
 @app.route("/")
 @login_required

@@ -41,7 +41,6 @@ input:focus,textarea:focus,select:focus{border-color:#1e90ff}
 <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('channel',this)">Channel</button>
     <button class="tab-btn" onclick="switchTab('dm',this)">DM</button>
-    <button class="tab-btn" onclick="switchTab('visitors',this)">Visitors</button>
 </div>
 <div class="panel active" id="channelPanel">
     <div class="section-title">Server</div>
@@ -65,11 +64,6 @@ input:focus,textarea:focus,select:focus{border-color:#1e90ff}
     <textarea id="dmMessage" placeholder="Type your DM message..."></textarea>
     <button class="btn btn-purple" id="dmSendBtn" onclick="sendDM()">Send DM</button>
 </div>
-<div class="panel" id="visitorsPanel">
-    <div class="section-title">Visitor Log</div>
-    <div class="chat-box" id="visitorList" style="height:300px">Loading...</div>
-    <button class="btn" style="background:#2d2d2d;margin-top:8px" onclick="loadVisitors()">Refresh Visitors</button>
-</div>
 <div class="status-bar" id="statusBar"></div>
 <script>
 let guilds=[],channels=[];
@@ -82,8 +76,7 @@ async function loadChannels(){const s=document.getElementById('channelSelect');c
 async function sendMessage(){const c=document.getElementById('channelSelect').value;const m=document.getElementById('messageInput').value.trim();if(!c){alert('Select a channel!');return}if(!m){alert('Empty message!');return}const b=document.getElementById('sendBtn');b.disabled=true;b.textContent='Sending...';const r=await api('/api/send',{method:'POST',body:JSON.stringify({channel_id:c,content:m})});b.disabled=false;b.textContent='Send Message';if(r.ok){document.getElementById('messageInput').value='';log('Message sent!')}else{log('Failed: '+(r.error||'unknown'))}}
 async function loadDMChat(){const u=document.getElementById('dmUserId').value.trim();if(!u){alert('Enter a User ID!');return}const e=document.getElementById('dmChat');e.textContent='Loading...';const d=await api('/api/dm/chat/'+u);if(d.error){e.textContent='Error: '+d.error;return}if(d.length===0){e.textContent='(empty chat)';return}e.textContent=d.map(m=>`[${m.timestamp}] ${m.author}: ${m.content}`).join('\n')}
 async function sendDM(){const u=document.getElementById('dmUserId').value.trim();const m=document.getElementById('dmMessage').value.trim();if(!u){alert('Enter a User ID!');return}if(!m){alert('Empty message!');return}const b=document.getElementById('dmSendBtn');b.disabled=true;b.textContent='Sending...';const r=await api('/api/dm/send',{method:'POST',body:JSON.stringify({user_id:u,content:m})});b.disabled=false;b.textContent='Send DM';if(r.ok){document.getElementById('dmMessage').value='';log('DM sent!');loadDMChat()}else{log('Failed: '+(r.error||'unknown'))}}
-async function loadVisitors(){const e=document.getElementById('visitorList');const d=await api('/api/visitors');e.innerHTML=d.length?d.map(v=>`[${v.time}] ${v.ip} | ${v.device} | ${v.browser}`).join('\n'):'No visitors yet.'}
-(async()=>{const st=await api('/api/status');if(st.ok){setStatus(st.bot+' - '+st.guilds+' servers',true);loadGuilds()}else{setStatus(st.message||'Error',false)};loadVisitors()})();
+(async()=>{const st=await api('/api/status');if(st.ok){setStatus(st.bot+' - '+st.guilds+' servers',true);loadGuilds()}else{setStatus(st.message||'Error',false)}})();
 </script>
 </body>
 </html>
