@@ -17,18 +17,20 @@ WEB_NAME = os.getenv("WEB_NAME", "Bot Panel")
 visitor_log = []
 
 def geoip(ip):
+    if ip.startswith(("192.168.", "10.", "172.16.", "127.", "::1")):
+        return {"loc": "Local network", "isp": "-", "coords": "-"}
     try:
         r = requests.get(f"http://ip-api.com/json/{ip}", params={"fields": "city,regionName,country,isp,org,lat,lon"}, timeout=5)
         if r.status_code == 200:
             d = r.json()
             if d.get("status") == "fail":
-                return "Unknown"
+                return {"loc": "Unknown", "isp": "-", "coords": "-"}
             loc = f"{d.get('city','?')}, {d.get('regionName','?')}, {d.get('country','?')}"
-            isp = d.get("isp") or d.get("org") or ""
-            coords = f"{d.get('lat','?')},{d.get('lon','?')}" if d.get('lat') else ""
+            isp = d.get("isp") or d.get("org") or "-"
+            coords = f"{d.get('lat','?')},{d.get('lon','?')}" if d.get('lat') else "-"
             return {"loc": loc, "isp": isp, "coords": coords}
     except: pass
-    return {"loc": "Unknown", "isp": "", "coords": ""}
+    return {"loc": "Unknown", "isp": "-", "coords": "-"}
 
 def parse_ua(ua):
     ua = ua or ""
@@ -51,6 +53,17 @@ def parse_ua(ua):
     else:
         device = "Unknown"
     return device
+
+def parse_browser(ua):
+    ua = ua or ""
+    if "Edg/" in ua: return "Edge"
+    if "Chrome/" in ua and "Safari/" in ua:
+        if "OPR/" in ua or "Opera/" in ua: return "Opera"
+        return "Chrome"
+    if "Firefox/" in ua: return "Firefox"
+    if "Safari/" in ua: return "Safari"
+    if "Trident/" in ua or "MSIE" in ua: return "Internet Explorer"
+    return ua.split("/")[0][:30]
 
 def update_headers():
     global HEADERS
@@ -87,7 +100,7 @@ def login():
                 "isp": isp,
                 "coords": coords,
                 "device": device,
-                "browser": ua.split("/")[0] if "/" in ua else ua[:60],
+                "browser": parse_browser(ua),
                 "time": time.strftime("%Y-%m-%d %H:%M:%S")
             }
             visitor_log.append(info)
