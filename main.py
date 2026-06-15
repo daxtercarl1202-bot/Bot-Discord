@@ -1,6 +1,6 @@
 import discord
 from discord import app_commands
-import os
+import os, sys, subprocess
 import io
 import json
 import asyncio
@@ -8,6 +8,15 @@ import aiohttp
 from dotenv import load_dotenv
 import wavelink
 from openai import AsyncOpenAI
+
+# Pastiin PyNaCl keinstall
+try:
+    import nacl
+except ImportError:
+    print("PyNaCl belum keinstall, install otomatis...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "PyNaCl>=1.5.0"])
+    import nacl
+    print("PyNaCl berhasil diinstall")
 
 
 load_dotenv()
@@ -304,15 +313,9 @@ async def on_ready():
     if not await connect_lavalink():
         print("Semua Lavalink node gagal, pake yt-dlp fallback.")
 
-    # Hapus semua commands (global + guild)
-    tree.clear_commands(guild=None)
-    await tree.sync()
-    for g in client.guilds:
-        tree.clear_commands(guild=g)
-        await tree.sync(guild=g)
-
-    # Daftarin ulang sebagai guild commands aja
+    # Daftarin commands
     guilds = [discord.Object(id=g.id) for g in client.guilds]
+    registered = []
     for cmd_fn, cmd_name, cmd_desc in [
         (stop_cmd, "stop", "stop music"),
         (queue_cmd, "queue", "Lihat antrian lagu"),
@@ -328,12 +331,20 @@ async def on_ready():
         try:
             cmd = app_commands.Command(name=cmd_name, description=cmd_desc, callback=cmd_fn)
             for g in guilds:
-                tree.add_command(cmd, guild=g)
+                existing = [c for c in tree.get_commands(guild=g) if c.name == cmd_name]
+                if not existing:
+                    tree.add_command(cmd, guild=g)
+            registered.append(cmd_name)
         except Exception as e:
             print(f"Gagal daftarin cmd /{cmd_name}: {e}")
 
     for g in guilds:
-        await tree.sync(guild=g)
+        try:
+            await tree.sync(guild=g)
+        except Exception as e:
+            print(f"Gagal sync guild {g.id}: {e}")
+
+    print(f"Commands registered: {', '.join(registered)}")
 
     for guild in client.guilds:
         for ch in guild.text_channels:
