@@ -1,0 +1,8 @@
+.env
+__pycache__
+*.pyc
+.python-version
+build/
+BotPanel.exe
+BotPanel.spec
+python
