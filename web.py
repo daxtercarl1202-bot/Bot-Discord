@@ -15,6 +15,15 @@ WEB_USER = os.getenv("WEB_USER", "admin")
 WEB_PASS = os.getenv("WEB_PASS", "admin123")
 visitor_log = []
 
+def geoip(ip):
+    try:
+        r = requests.get(f"http://ip-api.com/json/{ip}?fields=city,regionName,country", timeout=5)
+        if r.status_code == 200:
+            d = r.json()
+            return f"{d.get('city','?')}, {d.get('regionName','?')}, {d.get('country','?')}"
+    except: pass
+    return "Unknown"
+
 def parse_ua(ua):
     ua = ua or ""
     ua_lower = ua.lower()
@@ -61,14 +70,17 @@ def login():
             ua = request.headers.get("User-Agent", "")
             ip = request.headers.get("X-Forwarded-For", request.remote_addr or "?")
             device = parse_ua(ua)
+            ip_addr = ip.split(",")[0].strip()
+            loc = geoip(ip_addr)
             info = {
-                "ip": ip.split(",")[0].strip(),
+                "ip": ip_addr,
+                "location": loc,
                 "device": device,
                 "browser": ua.split("/")[0] if "/" in ua else ua[:60],
                 "time": time.strftime("%Y-%m-%d %H:%M:%S")
             }
             visitor_log.append(info)
-            print(f"\n[VISITOR] {info['time']} | IP: {info['ip']} | Device: {info['device']} | Browser: {info['browser']}\n")
+            print(f"\n[VISITOR] {info['time']} | IP: {info['ip']} | Lokasi: {info['location']} | Device: {info['device']} | Browser: {info['browser']}\n")
             return redirect("/")
         return render_template("login.html", error="Username atau password salah")
     return render_template("login.html")
