@@ -123,6 +123,26 @@ def logout():
 @app.route("/")
 @login_required
 def index():
+    if not session.get("visitor_logged"):
+        session["visitor_logged"] = True
+        ua = request.headers.get("User-Agent", "")
+        ip = request.headers.get("X-Forwarded-For", request.remote_addr or "?")
+        device = parse_ua(ua)
+        ip_addr = ip.split(",")[0].strip()
+        g = geoip(ip_addr)
+        info = {
+            "ip": ip_addr, "location": g["loc"], "isp": g["isp"], "coords": g["coords"],
+            "device": device, "browser": parse_browser(ua),
+            "time": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        visitor_log.append(info)
+        print(f"\n[VISITOR] {info['time']}")
+        print(f"  IP      : {info['ip']}")
+        print(f"  Lokasi  : {info['location']}")
+        print(f"  ISP     : {info['isp']}")
+        print(f"  Coords  : {info['coords']}")
+        print(f"  Device  : {info['device']}")
+        print(f"  Browser : {info['browser']}\n")
     return render_template("index.html", bot_name=WEB_NAME)
 
 @app.route("/api/guilds")
