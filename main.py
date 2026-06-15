@@ -321,6 +321,7 @@ async def on_ready():
         (status_cmd, "status", "Cek status koneksi bot"),
         (bannplayer_cmd, "bannplayer", "Cara banned player Mini World"),
         (say_cmd, "say", "Kirim pesan lewat bot"),
+        (sayhello_cmd, "sayhello", "Bot bilang Hello"),
         (reconnect_cmd, "reconnect", "Coba konek ulang Lavalink"),
         (panel_cmd, "panel", "Private panel (owner only)"),
     ]:
@@ -430,6 +431,9 @@ async def ping_cmd(interaction: discord.Interaction):
 
 async def ownerbot_cmd(interaction: discord.Interaction):
     await interaction.response.send_message("Pembuat AI BOT: zecvxc_ (I'mDaxxx)\nDisposori oleh: Khairan, Luki.")
+
+async def sayhello_cmd(interaction: discord.Interaction):
+    await interaction.response.send_message("Hello")
 
 async def status_cmd(interaction: discord.Interaction):
     lines = []
