@@ -199,19 +199,39 @@ async def play_lagu(message, query):
         vc = message.guild.voice_client
 
         if not vc:
+            # Coba Lavalink dulu (timeout 15 detik)
             if using_lavalink:
                 try:
-                    vc = await message.author.voice.channel.connect(cls=wavelink.Player)
+                    vc = await asyncio.wait_for(
+                        message.author.voice.channel.connect(cls=wavelink.Player),
+                        timeout=15
+                    )
+                except asyncio.TimeoutError:
+                    await message.reply("Lavalink lambat, pake fallback...")
+                    using_lavalink = False
                 except Exception as e:
-                    await message.reply(f"Gagal connect pake Lavalink: {str(e)[:100]}. Coba pake fallback...")
+                    await message.reply(f"Lavalink gagal: {str(e)[:80]}. Pake fallback...")
                     using_lavalink = False
             if not using_lavalink:
                 try:
                     vc = await message.author.voice.channel.connect()
                     voice_clients[gid] = vc
                 except Exception as e:
-                    await message.reply(f"Gagal connect ke voice: {str(e)[:100]}")
-                    return
+                    # Handle PyNaCl missing
+                    err = str(e)
+                    if "nacl" in err.lower() or "davey" in err.lower() or "PyNaCl" in err:
+                        await message.reply("PyNaCl blom keinstal, install otomatis...")
+                        import sys, subprocess
+                        subprocess.check_call([sys.executable, "-m", "pip", "install", "PyNaCl>=1.5.0"])
+                        try:
+                            vc = await message.author.voice.channel.connect()
+                            voice_clients[gid] = vc
+                        except Exception as e2:
+                            await message.reply(f"Gagal juga: {str(e2)[:80]}")
+                            return
+                    else:
+                        await message.reply(f"Gagal connect ke voice: {str(e)[:100]}")
+                        return
         else:
             if vc.channel != message.author.voice.channel:
                 await vc.move_to(message.author.voice.channel)
@@ -394,7 +414,13 @@ async def on_ready():
 
 @client.event
 async def on_wavelink_node_disconnected(payload):
-    print(f"Lavalink node disconnected: {payload.node.identifier}")
+    nid = payload.node.identifier
+    print(f"Lavalink node disconnected: {nid}")
+    # Bersihin node lama dari pool
+    try:
+        del wavelink.Pool._nodes[nid]
+    except:
+        pass
     asyncio.create_task(connect_lavalink())
 
 @client.event
