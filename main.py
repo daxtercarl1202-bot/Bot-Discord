@@ -55,7 +55,7 @@ if not os.path.exists(FFMPEG_PATH):
 # Lavalink nodes config (fallback jika node utama mati)
 LAVALINK_NODES = [
     {"uri": "http://lavalinkv4.serenetia.com:80", "password": "https://dsc.gg/ajidevserver", "identifier": "serenetia"},
-    {"uri": "https://lavalinkv4.serenetia.com:443", "password": "https://dsc.gg/ajidevserver", "identifier": "serenetia-ssl"},
+    {"uri": "https://lavalinkv4.serenetia.com:443", "password": "https://dsc.gg/ajidevserver", "identifier": "serenetia-v4-ssl"},
     {"uri": "http://lavalink.triniumhost.com:2333", "password": "kirito", "identifier": "trinium1"},
     {"uri": "http://lavalink.triniumhost.com:4333", "password": "free", "identifier": "trinium2"},
     {"uri": "https://lava-v4.ajieblogs.eu.org:443", "password": "https://dsc.gg/ajidevserver", "identifier": "ajieblogs"},
@@ -95,7 +95,10 @@ def cancel_leave_timer(guild_id):
         leave_timers.pop(guild_id, None)
 
 async def connect_lavalink():
+    existing = set(wavelink.Pool.nodes.keys())
     for cfg in LAVALINK_NODES:
+        if cfg["identifier"] in existing:
+            continue
         try:
             node = wavelink.Node(
                 uri=cfg["uri"],
@@ -419,12 +422,25 @@ async def on_ready():
 async def on_wavelink_node_disconnected(payload):
     nid = payload.node.identifier
     print(f"Lavalink node disconnected: {nid}")
-    # Bersihin node lama dari pool
     try:
         del wavelink.Pool._nodes[nid]
     except:
         pass
-    asyncio.create_task(connect_lavalink())
+    # Cuma reconnect node yg disconnected, bukan semua
+    for cfg in LAVALINK_NODES:
+        if cfg["identifier"] == nid:
+            try:
+                node = wavelink.Node(
+                    uri=cfg["uri"],
+                    password=cfg["password"],
+                    identifier=cfg["identifier"],
+                    inactive_player_timeout=None
+                )
+                await wavelink.Pool.connect(nodes=[node], client=client)
+                print(f"Lavalink reconnected: {cfg['identifier']}")
+            except Exception as e:
+                print(f"Lavalink reconnect {cfg['identifier']} gagal: {e}")
+            break
 
 @client.event
 async def on_wavelink_track_end(payload):
