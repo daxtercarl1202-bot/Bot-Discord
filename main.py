@@ -55,8 +55,11 @@ if not os.path.exists(FFMPEG_PATH):
 # Lavalink nodes config (fallback jika node utama mati)
 LAVALINK_NODES = [
     {"uri": "http://lavalinkv4.serenetia.com:80", "password": "https://dsc.gg/ajidevserver", "identifier": "serenetia"},
-    {"uri": "http://lavalinkv4.alndriw.online:443", "password": "alndriw", "identifier": "alndriw"},
-    {"uri": "http://lava-v4.techbyte.host:443", "password": "techbyte", "identifier": "techbyte"},
+    {"uri": "https://lavalinkv4.serenetia.com:443", "password": "https://dsc.gg/ajidevserver", "identifier": "serenetia-ssl"},
+    {"uri": "http://lavalink.triniumhost.com:2333", "password": "kirito", "identifier": "trinium1"},
+    {"uri": "http://lavalink.triniumhost.com:4333", "password": "free", "identifier": "trinium2"},
+    {"uri": "https://lava-v4.ajieblogs.eu.org:443", "password": "https://dsc.gg/ajidevserver", "identifier": "ajieblogs"},
+    {"uri": "http://sg1-nodelink.nyxbot.app:3000", "password": "nyxbot.app/support", "identifier": "nyxbot"},
 ]
 
 # Music queue per guild
