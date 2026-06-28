@@ -130,8 +130,34 @@ def is_lavalink_connected():
 async def ensure_lavalink():
     if not is_lavalink_connected():
         print("Lavalink disconnect, coba reconnect...")
+        # Bersihin node yg disconnect
+        for nid in list(wavelink.Pool.nodes.keys()):
+            try:
+                wavelink.Pool._nodes.pop(nid, None)
+            except:
+                pass
         return await connect_lavalink()
     return True
+
+async def lavalink_periodic_reconnect():
+    while True:
+        await asyncio.sleep(4 * 3600)
+        print("[Periodic] Reconnect Lavalink (setiap 4 jam)...", flush=True)
+        try:
+            for nid in list(wavelink.Pool.nodes.keys()):
+                try:
+                    n = wavelink.Pool.nodes.get(nid)
+                    if n:
+                        await n.disconnect()
+                except:
+                    pass
+                try:
+                    wavelink.Pool._nodes.pop(nid, None)
+                except:
+                    pass
+            await connect_lavalink()
+        except Exception as e:
+            print(f"[Periodic] Reconnect error: {e}", flush=True)
 
 async def ytdl_search(query):
     import yt_dlp
@@ -354,6 +380,8 @@ async def on_ready():
 
         # Konek ke Lavalink di background (jangan blokir)
         asyncio.create_task(_start_lavalink())
+        # Periodic reconnect tiap 4 jam
+        asyncio.create_task(lavalink_periodic_reconnect())
 
         # Daftarin commands pake tree.command decorator
         guilds = [discord.Object(id=g.id) for g in client.guilds]
@@ -423,12 +451,21 @@ async def on_wavelink_node_disconnected(payload):
     nid = payload.node.identifier
     print(f"Lavalink node disconnected: {nid}")
     try:
-        del wavelink.Pool._nodes[nid]
+        wavelink.Pool._nodes.pop(nid, None)
     except:
         pass
-    # Cuma reconnect node yg disconnected, bukan semua
-    for cfg in LAVALINK_NODES:
+    # Coba reconnect node yg sama, lalu fallback ke node lain
+    connected = False
+    # Urutkan: node yg disconnected first, baru yg lain
+    ordered = LAVALINK_NODES[:]
+    for i, cfg in enumerate(ordered):
         if cfg["identifier"] == nid:
+            ordered.insert(0, ordered.pop(i))
+            break
+    for cfg in ordered:
+        if cfg["identifier"] in wavelink.Pool.nodes:
+            continue
+        for retry in range(3):
             try:
                 node = wavelink.Node(
                     uri=cfg["uri"],
@@ -436,11 +473,24 @@ async def on_wavelink_node_disconnected(payload):
                     identifier=cfg["identifier"],
                     inactive_player_timeout=None
                 )
-                await wavelink.Pool.connect(nodes=[node], client=client)
-                print(f"Lavalink reconnected: {cfg['identifier']}")
+                await asyncio.wait_for(
+                    wavelink.Pool.connect(nodes=[node], client=client),
+                    timeout=10
+                )
+                print(f"Lavalink connected: {cfg['identifier']} ({cfg['uri']})")
+                connected = True
+                break
+            except asyncio.TimeoutError:
+                print(f"Lavalink {cfg['identifier']} timeout (percobaan {retry+1}/3)")
+                if retry < 2:
+                    await asyncio.sleep(2)
             except Exception as e:
-                print(f"Lavalink reconnect {cfg['identifier']} gagal: {e}")
+                print(f"Lavalink {cfg['identifier']} gagal: {e}")
+                break
+        if connected:
             break
+    if not connected:
+        print("Semua Lavalink node gagal, pake yt-dlp fallback.")
 
 @client.event
 async def on_wavelink_track_end(payload):
@@ -542,6 +592,18 @@ async def status_cmd(interaction: discord.Interaction):
 
 async def reconnect_cmd(interaction: discord.Interaction):
     await interaction.response.send_message("Mencoba konek ulang ke Lavalink...")
+    # Bersihin pool dulu
+    for nid in list(wavelink.Pool.nodes.keys()):
+        try:
+            n = wavelink.Pool.nodes.get(nid)
+            if n:
+                await n.disconnect()
+        except:
+            pass
+        try:
+            wavelink.Pool._nodes.pop(nid, None)
+        except:
+            pass
     ok = await connect_lavalink()
     if ok:
         await interaction.edit_original_response(content="Lavalink berhasil konek!")
